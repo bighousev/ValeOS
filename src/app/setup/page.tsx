@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Setup() {
   return (
     <main className="simple-screen">
@@ -11,6 +13,17 @@ export default function Setup() {
           aplique as migrations para ativar o acesso.
         </p>
         <p>As etapas estão no README do projeto.</p>
+        {process.env.NODE_ENV === "development" && (
+          <div className="setup-demo">
+            <p>
+              Quer conhecer o sistema agora? Abra uma demonstração local com
+              dados fictícios. Suas alterações ficam somente neste navegador.
+            </p>
+            <Link className="button primary" href="/demo">
+              Abrir demonstração
+            </Link>
+          </div>
+        )}
       </div>
     </main>
   );

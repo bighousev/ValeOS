@@ -12,6 +12,8 @@ Referência: [PRD v1.0](ValeOS_PRD_v1.0.md). Este registro distingue código dis
 
 O build e os testes unitários locais passam. A migration ainda não foi executada em uma instância Supabase e não há evidência de homologação ponta a ponta. Não implantar em produção até concluir o gate da seção 13 do PRD.
 
+Há um modo de demonstração local em `/demo`, disponível somente com `pnpm dev`. Ele usa dados fictícios no armazenamento do navegador e simula os fluxos principais. Não substitui os testes de integração com Supabase, Auth e links reais de aprovação.
+
 ## Pontos de atenção antes do lançamento
 
 - Confirmar no Supabase que cadastro público está desabilitado e testar RLS com contas de colaborador, administrador e conta sem perfil.

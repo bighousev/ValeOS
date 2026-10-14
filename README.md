@@ -8,6 +8,12 @@ Next.js 16 + TypeScript na aplicação; Supabase gerenciado para PostgreSQL e Au
 
 ## Desenvolvimento local
 
+### Demonstração sem Supabase
+
+Com `pnpm dev` em execução, abra `http://127.0.0.1:3000/setup` e clique em **Abrir demonstração**, ou acesse `/demo`. O modo demo traz registros fictícios e permite testar localmente leads, pipeline, clientes, projetos, tarefas, dependências, aprovações simuladas, reuniões e notificações. As alterações ficam no armazenamento deste navegador; **Reiniciar dados** devolve os exemplos originais.
+
+O demo só está disponível em desenvolvimento. Ele não cria um projeto Supabase, não testa autenticação, RLS, webhook, e-mail, links externos seguros nem persistência compartilhada. Para homologar esses fluxos, configure o Supabase real conforme os passos abaixo.
+
 1. Instale Node.js 24 e pnpm 11. Execute `pnpm install`.
 2. Crie um projeto no Supabase. Copie `.env.example` para `.env.local` e preencha URL, chave publishable, chave service role, `APP_URL` e segredos fortes. **Nunca envie `.env.local` ao GitHub.**
 3. Aplique [a migration inicial](supabase/migrations/202610140001_initial.sql) pelo Supabase CLI ou SQL Editor. Mantenha a migration versionada como fonte de verdade.
