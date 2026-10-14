@@ -1,0 +1,49 @@
+limit_req_zone $binary_remote_addr zone=valeos_webhook:10m rate=10r/m;
+limit_req_zone $binary_remote_addr zone=valeos_approval:10m rate=20r/m;
+
+server {
+    listen 80;
+    server_name valeos.example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name valeos.example.com;
+    ssl_certificate /etc/letsencrypt/live/valeos.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/valeos.example.com/privkey.pem;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    client_max_body_size 1m;
+
+    location = /api/integrations/leads {
+        limit_req zone=valeos_webhook burst=5 nodelay;
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location /aprovar/ {
+        access_log off;
+        limit_req zone=valeos_approval burst=10 nodelay;
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location = /api/approval-links/decision {
+        limit_req zone=valeos_approval burst=10 nodelay;
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
