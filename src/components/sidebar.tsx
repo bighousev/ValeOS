@@ -8,11 +8,13 @@ import {
   CalendarDays,
   Bell,
   Settings2,
+  Search,
   ArrowUpRight,
 } from "lucide-react";
 
 const links = [
   { href: "/", label: "Dashboard", Icon: LayoutDashboard },
+  { href: "/busca", label: "Busca", Icon: Search },
   { href: "/leads", label: "Prospecção", Icon: ContactRound },
   { href: "/pipeline", label: "Pipeline", Icon: KanbanSquare },
   { href: "/clientes", label: "Clientes", Icon: Building2 },

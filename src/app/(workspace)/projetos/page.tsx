@@ -1,17 +1,39 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { EmptyState, PageHeading, Status } from "@/components/ui";
+import { PAGE_SIZE, Pagination, pageNumber } from "@/components/pagination";
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+}) {
   const { db } = await requireUser();
-  const { data: projects } = await db
+  const search = await searchParams;
+  const q = (search.q || "").trim().slice(0, 100);
+  const status = [
+    "Planejado",
+    "Em andamento",
+    "Pausado",
+    "Em aprovação",
+    "Concluído",
+    "Cancelado",
+  ].includes(search.status || "")
+    ? search.status || ""
+    : "";
+  const page = pageNumber(search.page);
+  let query = db
     .from("projects")
     .select(
       "id,name,status,priority,due_on,organizations(name),project_tasks(id,status)",
+      { count: "exact" },
     )
     .is("archived_at", null)
     .order("created_at", { ascending: false })
-    .limit(100);
+    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+  if (q) query = query.ilike("name", `%${q}%`);
+  if (status) query = query.eq("status", status);
+  const { data: projects, count } = await query;
   return (
     <>
       <PageHeading
@@ -21,6 +43,38 @@ export default async function ProjectsPage() {
         action={{ href: "/projetos/novo", label: "+ Novo projeto" }}
       />
       <div className="surface">
+        <div className="surface-toolbar">
+          <div>
+            <strong>Projetos</strong>
+            <span>{count || 0} encontrados</span>
+          </div>
+          <form className="search-form wide">
+            <input
+              name="q"
+              aria-label="Buscar projetos"
+              placeholder="Buscar projeto"
+              defaultValue={q}
+            />
+            <select
+              name="status"
+              aria-label="Filtrar situação"
+              defaultValue={status}
+            >
+              <option value="">Todas as situações</option>
+              {[
+                "Planejado",
+                "Em andamento",
+                "Pausado",
+                "Em aprovação",
+                "Concluído",
+                "Cancelado",
+              ].map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+            <button className="button secondary">Filtrar</button>
+          </form>
+        </div>
         {!projects?.length ? (
           <EmptyState
             title="Nenhum projeto ainda"
@@ -91,6 +145,12 @@ export default async function ProjectsPage() {
             </table>
           </div>
         )}
+        <Pagination
+          path="/projetos"
+          page={page}
+          count={count || 0}
+          filters={{ ...(q ? { q } : {}), ...(status ? { status } : {}) }}
+        />
       </div>
     </>
   );

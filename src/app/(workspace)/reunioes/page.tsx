@@ -2,16 +2,33 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { EmptyState, PageHeading, Status } from "@/components/ui";
 import { CalendarPreview } from "@/components/calendar-preview";
+import { PAGE_SIZE, Pagination, pageNumber } from "@/components/pagination";
 
-export default async function MeetingsPage() {
+export default async function MeetingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+}) {
   const { db } = await requireUser();
-  const { data: meetings } = await db
+  const search = await searchParams;
+  const q = (search.q || "").trim().slice(0, 100);
+  const status = ["Agendada", "Realizada", "Cancelada"].includes(
+    search.status || "",
+  )
+    ? search.status || ""
+    : "";
+  const page = pageNumber(search.page);
+  let query = db
     .from("meetings")
     .select(
       "id,title,starts_at,status,organizations(name),projects(name),meeting_actions(id,status)",
+      { count: "exact" },
     )
     .order("starts_at", { ascending: false })
-    .limit(100);
+    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+  if (q) query = query.ilike("title", `%${q}%`);
+  if (status) query = query.eq("status", status);
+  const { data: meetings, count } = await query;
   return (
     <>
       <PageHeading
@@ -21,6 +38,31 @@ export default async function MeetingsPage() {
         action={{ href: "/reunioes/novo", label: "+ Nova reunião" }}
       />
       <div className="surface">
+        <div className="surface-toolbar">
+          <div>
+            <strong>Reuniões</strong>
+            <span>{count || 0} encontradas</span>
+          </div>
+          <form className="search-form wide">
+            <input
+              name="q"
+              aria-label="Buscar reuniões"
+              placeholder="Buscar reunião"
+              defaultValue={q}
+            />
+            <select
+              name="status"
+              aria-label="Filtrar situação"
+              defaultValue={status}
+            >
+              <option value="">Todas as situações</option>
+              {["Agendada", "Realizada", "Cancelada"].map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+            <button className="button secondary">Filtrar</button>
+          </form>
+        </div>
         {!meetings?.length ? (
           <EmptyState
             title="Nenhuma reunião registrada"
@@ -91,6 +133,12 @@ export default async function MeetingsPage() {
             </table>
           </div>
         )}
+        <Pagination
+          path="/reunioes"
+          page={page}
+          count={count || 0}
+          filters={{ ...(q ? { q } : {}), ...(status ? { status } : {}) }}
+        />
       </div>
       <CalendarPreview />
     </>

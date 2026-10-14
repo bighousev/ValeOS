@@ -2,25 +2,28 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { dateBr } from "@/lib/format";
 import { EmptyState, Notice, PageHeading, Status } from "@/components/ui";
+import { PAGE_SIZE, Pagination, pageNumber } from "@/components/pagination";
 
 export default async function LeadsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; error?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; error?: string }>;
 }) {
   const { db } = await requireUser();
   const search = await searchParams;
   const q = (search.q || "").trim().slice(0, 100);
+  const page = pageNumber(search.page);
   let query = db
     .from("leads")
     .select(
       "id,name,email,phone,company,source,created_at,possible_duplicate_id,opportunities(stage)",
+      { count: "exact" },
     )
     .is("archived_at", null)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if (q) query = query.ilike("name", `%${q}%`);
-  const { data: leads, error } = await query;
+  const { data: leads, error, count } = await query;
   return (
     <>
       <PageHeading
@@ -39,7 +42,7 @@ export default async function LeadsPage({
         <div className="surface-toolbar">
           <div>
             <strong>Leads cadastrados</strong>
-            <span>{leads?.length || 0} exibidos</span>
+            <span>{count || 0} encontrados</span>
           </div>
           <form className="search-form">
             <input
@@ -113,6 +116,12 @@ export default async function LeadsPage({
             </table>
           </div>
         )}
+        <Pagination
+          path="/leads"
+          page={page}
+          count={count || 0}
+          filters={q ? { q } : {}}
+        />
       </div>
     </>
   );

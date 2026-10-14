@@ -2,17 +2,28 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { dateBr } from "@/lib/format";
 import { EmptyState, PageHeading } from "@/components/ui";
+import { PAGE_SIZE, Pagination, pageNumber } from "@/components/pagination";
 
-export default async function ClientsPage() {
+export default async function ClientsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; page?: string }>;
+}) {
   const { db } = await requireUser();
-  const { data: organizations } = await db
+  const search = await searchParams;
+  const q = (search.q || "").trim().slice(0, 100);
+  const page = pageNumber(search.page);
+  let query = db
     .from("organizations")
     .select(
       "id,name,segment,relationship_status,created_at,contacts(count),opportunities(count),projects(count)",
+      { count: "exact" },
     )
     .is("archived_at", null)
     .order("name")
-    .limit(100);
+    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+  if (q) query = query.ilike("name", `%${q}%`);
+  const { data: organizations, count } = await query;
   return (
     <>
       <PageHeading
@@ -22,6 +33,21 @@ export default async function ClientsPage() {
         action={{ href: "/clientes/novo", label: "+ Nova empresa" }}
       />
       <div className="surface">
+        <div className="surface-toolbar">
+          <div>
+            <strong>Empresas</strong>
+            <span>{count || 0} encontradas</span>
+          </div>
+          <form className="search-form">
+            <input
+              name="q"
+              aria-label="Buscar empresas"
+              placeholder="Buscar empresa"
+              defaultValue={q}
+            />
+            <button className="button secondary">Buscar</button>
+          </form>
+        </div>
         {!organizations?.length ? (
           <EmptyState
             title="Nenhum cliente cadastrado"
@@ -68,6 +94,12 @@ export default async function ClientsPage() {
             </table>
           </div>
         )}
+        <Pagination
+          path="/clientes"
+          page={page}
+          count={count || 0}
+          filters={q ? { q } : {}}
+        />
       </div>
     </>
   );

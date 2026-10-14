@@ -3,17 +3,32 @@ import { requireUser } from "@/lib/auth";
 import { brl } from "@/lib/format";
 import { stages } from "@/lib/validation";
 import { EmptyState, PageHeading, Status } from "@/components/ui";
+import { PAGE_SIZE, Pagination, pageNumber } from "@/components/pagination";
 
-export default async function PipelinePage() {
+export default async function PipelinePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; stage?: string; page?: string }>;
+}) {
   const { db } = await requireUser();
-  const { data: opportunities } = await db
+  const search = await searchParams;
+  const q = (search.q || "").trim().slice(0, 100);
+  const stage = stages.includes(search.stage as (typeof stages)[number])
+    ? search.stage || ""
+    : "";
+  const page = pageNumber(search.page);
+  let query = db
     .from("opportunities")
     .select(
       "id,title,stage,estimated_value,created_at,leads(name,company,source)",
+      { count: "exact" },
     )
     .is("archived_at", null)
     .order("created_at", { ascending: false })
-    .limit(200);
+    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+  if (q) query = query.ilike("title", `%${q}%`);
+  if (stage) query = query.eq("stage", stage);
+  const { data: opportunities, count } = await query;
   return (
     <>
       <PageHeading
@@ -22,6 +37,33 @@ export default async function PipelinePage() {
         description="Uma visão simples das oportunidades em cada etapa."
         action={{ href: "/leads/novo", label: "+ Novo lead" }}
       />
+      <section className="surface pipeline-filter">
+        <div className="surface-toolbar">
+          <div>
+            <strong>Oportunidades</strong>
+            <span>{count || 0} encontradas</span>
+          </div>
+          <form className="search-form wide">
+            <input
+              name="q"
+              aria-label="Buscar oportunidades"
+              placeholder="Buscar oportunidade"
+              defaultValue={q}
+            />
+            <select
+              name="stage"
+              aria-label="Filtrar etapa"
+              defaultValue={stage}
+            >
+              <option value="">Todas as etapas</option>
+              {stages.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+            <button className="button secondary">Filtrar</button>
+          </form>
+        </div>
+      </section>
       {!opportunities?.length ? (
         <div className="surface">
           <EmptyState
@@ -76,6 +118,12 @@ export default async function PipelinePage() {
           })}
         </div>
       )}
+      <Pagination
+        path="/pipeline"
+        page={page}
+        count={count || 0}
+        filters={{ ...(q ? { q } : {}), ...(stage ? { stage } : {}) }}
+      />
     </>
   );
 }
